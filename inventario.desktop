@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Control de Inventario
+Comment=Sistema de control de inventario
+Exec=/home/andres/Escritorio/sistema de control de inventario/inventario.sh
+Terminal=false
+Type=Application
+Icon=/home/andres/Escritorio/sistema de control de inventario/client/public/favicon.ico
+Categories=Office;

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Control de Inventario</title>
+<link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <!-- VIEW LOGIN -->
+  <div class="view view-login" id="view-login">
+    <div>
+      <div class="login-card">
+        <div class="login-header">
+          <div class="login-icon">🔧</div>
+          <h1>Control de Inventario</h1>
+          <p>Iniciar sesión</p>
+        </div>
+        <form id="formLogin">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" required placeholder="admin@inventario.com">
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Contraseña</label>
+            <input type="password" id="loginPassword" required placeholder="••••••">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="btnLogin">Iniciar Sesión</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW DASHBOARD -->
+  <div class="view" id="view-dashboard" style="display:none;">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div style="font-size:1.5rem;">🔧</div>
+        <div style="font-weight:700;font-size:0.95rem;">Inventario</div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="tab tab-active" data-section="ups"><span class="tab-icon">⚡</span> UPS</div>
+        <div class="tab" data-section="herramientas"><span class="tab-icon">🔨</span> Herramientas</div>
+        <div class="tab" data-section="proyectos"><span class="tab-icon">📋</span> Proyectos</div>
+        <div class="tab" data-section="movimientos"><span class="tab-icon">📦</span> Movimientos</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="tab" id="btnPerfil"><span class="tab-icon">👤</span> <span id="userInfo"></span></div>
+        <div class="tab" id="btnAuditoria"><span class="tab-icon">📜</span> Auditoría</div>
+        <div class="tab" id="btnBackupHeader"><span class="tab-icon">💾</span> Backup</div>
+        <div class="tab" id="btnDarkMode">🌙</div>
+        <div class="tab" id="btnLogout"><span class="tab-icon">🚪</span> Salir</div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- DASHBOARD RESUMEN CARDS -->
+      <div class="dash-cards">
+        <div class="dash-card"><div class="dash-icon">⚡</div><div><span class="dash-num" id="dash-total-ups">0</span><span class="dash-label">UPS</span></div></div>
+        <div class="dash-card"><div class="dash-icon">🔨</div><div><span class="dash-num" id="dash-total-herr">0</span><span class="dash-label">Herramientas</span></div></div>
+        <div class="dash-card"><div class="dash-icon">📋</div><div><span class="dash-num" id="dash-total-proy">0</span><span class="dash-label">Proyectos Activos</span></div></div>
+        <div class="dash-card"><div class="dash-icon">📦</div><div><span class="dash-num" id="dash-total-mov">0</span><span class="dash-label">En Uso</span></div></div>
+      </div>
+
+      <!-- SECCION UPS -->
+      <div class="section" id="section-ups">
+        <div class="resumen" id="resumen-ups">
+          <div class="resumen-card" data-estado="activa"><span class="resumen-num" id="ups-count-activa">0</span><span class="resumen-label">Activas</span></div>
+          <div class="resumen-card" data-estado="entrada"><span class="resumen-num" id="ups-count-entrada">0</span><span class="resumen-label">Entrada</span></div>
+          <div class="resumen-card" data-estado="salida"><span class="resumen-num" id="ups-count-salida">0</span><span class="resumen-label">Salida</span></div>
+          <div class="resumen-card" data-estado="mantenimiento"><span class="resumen-num" id="ups-count-mantenimiento">0</span><span class="resumen-label">Mantenimiento</span></div>
+          <div class="resumen-card" data-estado="soporte_provisional"><span class="resumen-num" id="ups-count-soporte_provisional">0</span><span class="resumen-label">Soporte Prov.</span></div>
+          <div class="resumen-card" data-estado="baja"><span class="resumen-num" id="ups-count-baja">0</span><span class="resumen-label">De Baja</span></div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="card"><div class="card-header"><h3>Distribución por Estado</h3></div><div class="card-body chart-container"><canvas id="chart-ups-estado"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Por Modelo</h3></div><div class="card-body chart-container"><canvas id="chart-ups-modelo"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Ingresos por Mes</h3></div><div class="card-body chart-container"><canvas id="chart-ups-meses"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Top Ubicaciones</h3></div><div class="card-body chart-container"><canvas id="chart-ups-ubicacion"></canvas></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Inventario de UPS</h3>
+            <div class="card-actions">
+              <input type="text" class="filtro-buscar" data-section="ups" placeholder="Buscar por serie, modelo o ubicación...">
+              <select class="filtro-estado" data-section="ups">
+                <option value="">Todos</option>
+                <option value="activa">Activa</option>
+                <option value="entrada">Entrada</option>
+                <option value="salida">Salida</option>
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="soporte_provisional">Soporte Prov.</option>
+                <option value="baja">De Baja</option>
+              </select>
+              <button class="btn btn-secondary btn-sm btn-export" data-section="ups">📥 Excel</button>
+              <button class="btn btn-secondary btn-sm btn-pdf" data-section="ups">📄 PDF</button>
+              <button class="btn btn-primary btn-nuevo" data-section="ups">+ Nueva UPS</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>Serie</th><th>Modelo</th><th>Capacidad</th><th>Ubicación</th><th>Estado</th><th>Ingreso</th><th>Salida</th><th>Notas</th><th>Acciones</th></tr></thead><tbody id="ups-tabla-body"></tbody></table>
+            </div>
+            <div class="pag-controls" id="pag-ups"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCION HERRAMIENTAS -->
+      <div class="section" id="section-herramientas" style="display:none;">
+        <div class="resumen" id="resumen-herramientas">
+          <div class="resumen-card" data-estado="disponible"><span class="resumen-num" id="herr-count-disponible">0</span><span class="resumen-label">Disponibles</span></div>
+          <div class="resumen-card" data-estado="en_uso"><span class="resumen-num" id="herr-count-en_uso">0</span><span class="resumen-label">En Uso</span></div>
+          <div class="resumen-card" data-estado="baja"><span class="resumen-num" id="herr-count-baja">0</span><span class="resumen-label">De Baja</span></div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="card"><div class="card-header"><h3>Distribución por Estado</h3></div><div class="card-body chart-container"><canvas id="chart-herr-estado"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Por Marca</h3></div><div class="card-body chart-container"><canvas id="chart-herr-marca"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Adquisiciones por Mes</h3></div><div class="card-body chart-container"><canvas id="chart-herr-meses"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Top Ubicaciones</h3></div><div class="card-body chart-container"><canvas id="chart-herr-ubicacion"></canvas></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Inventario de Herramientas</h3>
+            <div class="card-actions">
+              <input type="text" class="filtro-buscar" data-section="herramientas" placeholder="Buscar por código, nombre o ubicación...">
+              <select class="filtro-estado" data-section="herramientas">
+                <option value="">Todos</option>
+                <option value="disponible">Disponible</option>
+                <option value="en_uso">En Uso</option>
+              </select>
+               <select id="filtro-proyecto-herr" class="filter-select">
+                <option value="">Todos los proyectos</option>
+              </select>
+              <button class="btn btn-secondary btn-sm btn-export" data-section="herramientas">📥 Excel</button>
+              <button class="btn btn-secondary btn-sm btn-pdf" data-section="herramientas">📄 PDF</button>
+              <button class="btn btn-primary btn-nuevo" data-section="herramientas">+ Nueva Herramienta</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>Código</th><th>Nombre</th><th>Marca</th><th>Modelo</th><th>Ubicación</th><th>Estado</th><th>Adquisición</th><th>Notas</th><th>Acciones</th></tr></thead><tbody id="herr-tabla-body"></tbody></table>
+            </div>
+            <div class="pag-controls" id="pag-herr"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCION PROYECTOS -->
+      <div class="section" id="section-proyectos" style="display:none;">
+        <div class="charts-grid" id="charts-proyectos">
+          <div class="card"><div class="card-header"><h3>Proyectos por Estado</h3></div><div class="card-body chart-container"><canvas id="chart-proy-estado"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Herramientas por Proyecto</h3></div><div class="card-body chart-container"><canvas id="chart-proy-herr"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Proyectos por Mes</h3></div><div class="card-body chart-container"><canvas id="chart-proy-meses"></canvas></div></div>
+          <div class="card"><div class="card-header"><h3>Top Responsables</h3></div><div class="card-body chart-container"><canvas id="chart-proy-responsable"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Proyectos de Infraestructura</h3>
+            <button class="btn btn-primary" id="btnNuevoProyecto">+ Nuevo Proyecto</button>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>Nombre</th><th>Ubicación</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Responsable</th><th>Descripción</th><th>Herramientas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="proyectos-tabla-body"></tbody></table>
+            </div>
+            <div class="pag-controls" id="pag-proy"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCION MOVIMIENTOS -->
+      <div class="section" id="section-movimientos" style="display:none;">
+        <div class="resumen" id="resumen-movimientos">
+          <div class="resumen-card" data-estado="prestadas"><span class="resumen-num" id="mov-count-prestadas">0</span><span class="resumen-label">En Uso</span></div>
+          <div class="resumen-card" data-estado="proyectos"><span class="resumen-num" id="mov-count-proyectos">0</span><span class="resumen-label">Proyectos Activos</span></div>
+          <div class="resumen-card" data-estado="total"><span class="resumen-num" id="mov-count-total">0</span><span class="resumen-label">Total Movimientos</span></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Movimientos de Herramientas</h3>
+            <div class="card-actions">
+              <button class="btn btn-secondary btn-sm" id="btnReporteMov">📄 Reporte Físico</button>
+               <select id="filtro-proyecto-mov" class="filter-select"><option value="">Todos los proyectos</option></select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>Fecha Salida</th><th>Herramienta</th><th>Proyecto</th><th>Recibió</th><th>Estado</th><th>Fecha Entrada</th><th>Notas</th></tr></thead><tbody id="movimientos-tabla-body"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL UPS -->
+  <div class="modal-overlay" id="modal-ups">
+    <div class="modal">
+      <div class="modal-header"><h2 id="modal-ups-title">Nueva UPS</h2><button class="modal-close" data-modal="ups">&times;</button></div>
+      <form id="form-ups">
+        <input type="hidden" id="ups-id">
+        <div class="form-grid">
+          <div class="form-group"><label for="ups-serial">Número de Serie *</label><input type="text" id="ups-serial" required></div>
+          <div class="form-group"><label for="ups-modelo">Modelo</label><input type="text" id="ups-modelo" placeholder="ej: APC SUA1500"></div>
+          <div class="form-group"><label for="ups-capacidad">Capacidad</label><input type="text" id="ups-capacidad" placeholder="ej: 1500VA / 900W"></div>
+          <div class="form-group"><label for="ups-ubicacion">Ubicación</label><input type="text" id="ups-ubicacion" placeholder="ej: Oficina Central"></div>
+          <div class="form-group"><label for="ups-estado">Estado</label>
+            <select id="ups-estado">
+              <option value="activa">Activa</option><option value="entrada">Entrada</option><option value="salida">Salida</option>
+              <option value="mantenimiento">Mantenimiento</option><option value="soporte_provisional">Soporte Provisional</option><option value="baja">De Baja</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="ups-fecha_ingreso">Fecha de Ingreso</label><input type="date" id="ups-fecha_ingreso"></div>
+          <div class="form-group" id="group-ups-fecha_salida"><label for="ups-fecha_salida">Fecha de Salida</label><input type="date" id="ups-fecha_salida"></div>
+        </div>
+        <div class="form-group"><label for="ups-notas">Notas</label><textarea id="ups-notas" rows="2" placeholder="Observaciones..."></textarea></div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" data-modal="ups">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL HERRAMIENTAS -->
+  <div class="modal-overlay" id="modal-herramientas">
+    <div class="modal">
+      <div class="modal-header"><h2 id="modal-herr-title">Nueva Herramienta</h2><button class="modal-close" data-modal="herramientas">&times;</button></div>
+      <form id="form-herramientas">
+        <input type="hidden" id="herr-id">
+        <div class="form-grid">
+          <div class="form-group"><label for="herr-codigo">Código *</label><input type="text" id="herr-codigo" required placeholder="ej: HERR-001"></div>
+          <div class="form-group"><label for="herr-nombre">Nombre</label><input type="text" id="herr-nombre" placeholder="ej: Taladro Percutor"></div>
+          <div class="form-group"><label for="herr-marca">Marca</label><input type="text" id="herr-marca" placeholder="ej: Bosch"></div>
+          <div class="form-group"><label for="herr-modelo">Modelo</label><input type="text" id="herr-modelo" placeholder="ej: GSB 13 RE"></div>
+          <div class="form-group"><label for="herr-ubicacion">Ubicación</label><input type="text" id="herr-ubicacion" placeholder="ej: Taller Principal"></div>
+          <div class="form-group"><label for="herr-estado">Estado</label>
+            <select id="herr-estado"><option value="disponible">Disponible</option><option value="en_uso">En Uso</option><option value="baja">De Baja</option></select>
+          </div>
+          <div class="form-group"><label for="herr-fecha">Fecha de Adquisición</label><input type="date" id="herr-fecha"></div>
+        </div>
+        <div class="form-group"><label for="herr-notas">Notas</label><textarea id="herr-notas" rows="2" placeholder="Observaciones..."></textarea></div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" data-modal="herramientas">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL PERFIL -->
+  <div class="modal-overlay" id="modal-perfil">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header"><h2>Mi Perfil</h2><button class="modal-close" data-modal="perfil">&times;</button></div>
+      <form id="form-password">
+        <div class="form-group"><label>Email</label><input type="text" id="perfil-email" disabled></div>
+        <div class="form-group"><label>Rol</label><input type="text" id="perfil-rol" disabled></div>
+        <hr style="margin:16px 0;border-color:var(--border);">
+        <div class="form-group"><label for="perfil-current">Contraseña actual</label><input type="password" id="perfil-current" placeholder="••••••" required></div>
+        <div class="form-group"><label for="perfil-new">Nueva contraseña (mín. 6)</label><input type="password" id="perfil-new" placeholder="••••••" required minlength="6"></div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" data-modal="perfil">Cancelar</button><button type="submit" class="btn btn-primary">Cambiar Contraseña</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL AUDITORIA -->
+  <div class="modal-overlay" id="modal-auditoria">
+    <div class="modal" style="max-width:900px;">
+      <div class="modal-header">
+        <h2>📋 Registro de Auditoría</h2>
+        <div style="display:flex;gap:8px;">
+           <select id="audit-filtro" class="filter-select">
+            <option value="">Todas las tablas</option><option value="ups">UPS</option><option value="herramientas">Herramientas</option>
+          </select>
+          <button class="modal-close" data-modal="auditoria">&times;</button>
+        </div>
+      </div>
+      <div class="card-body" style="max-height:500px;overflow-y:auto;padding:0;">
+        <table><thead><tr><th>Fecha</th><th>Usuario</th><th>Tabla</th><th>Acción</th><th>Registro ID</th><th>Detalle</th></tr></thead><tbody id="audit-tabla-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL BACKUP -->
+  <div class="modal-overlay" id="modal-backup">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header"><h2>💾 Backup / Restaurar</h2><button class="modal-close" data-modal="backup">&times;</button></div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <button class="btn btn-primary btn-full" id="btnBackup">📥 Descargar Backup</button>
+        <hr>
+        <label style="font-size:0.85rem;font-weight:500;color:var(--text-secondary);">Restaurar desde archivo:</label>
+        <input type="file" id="backup-file" accept=".json">
+        <button class="btn btn-secondary btn-full" id="btnRestore">📤 Restaurar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PROYECTO -->
+  <div class="modal-overlay" id="modal-proyecto">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header"><h2 id="modal-proyecto-title">Nuevo Proyecto</h2><button class="modal-close" data-modal="proyecto">&times;</button></div>
+      <form id="form-proyecto">
+        <input type="hidden" id="proyecto-id">
+        <div class="form-grid">
+          <div class="form-group"><label for="proy-nombre">Nombre del Proyecto *</label><input type="text" id="proy-nombre" required placeholder="ej: Instalación Eléctrica Norte"></div>
+          <div class="form-group"><label for="proy-ubicacion">Ubicación</label><input type="text" id="proy-ubicacion" placeholder="ej: Zona Industrial"></div>
+          <div class="form-group"><label for="proy-fecha_inicio">Fecha Inicio</label><input type="date" id="proy-fecha_inicio"></div>
+          <div class="form-group"><label for="proy-fecha_fin">Fecha Fin</label><input type="date" id="proy-fecha_fin"></div>
+          <div class="form-group"><label for="proy-responsable">Responsable</label><input type="text" id="proy-responsable" placeholder="Nombre del responsable"></div>
+        </div>
+        <div class="form-group"><label for="proy-descripcion">Descripción</label><textarea id="proy-descripcion" rows="2" placeholder="Detalles del proyecto..."></textarea></div>
+        <div class="form-group">
+          <label>Herramientas asignadas</label>
+          <div id="proy-herr-selector" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;"></div>
+          <div style="margin-top:6px;display:flex;gap:8px;">
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-select-all-herr">Seleccionar todas</button>
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-deselect-all-herr">Deseleccionar todas</button>
+          </div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" data-modal="proyecto">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL ASIGNAR HERRAMIENTA -->
+  <div class="modal-overlay" id="modal-asignar">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header"><h2>📋 Asignar Herramienta</h2><button class="modal-close" data-modal="asignar">&times;</button></div>
+      <form id="form-asignar">
+        <input type="hidden" id="asignar-herramienta-id">
+        <div class="form-group"><label>Herramienta</label><input type="text" id="asignar-herramienta-nombre" disabled></div>
+        <div class="form-group"><label for="asignar-proyecto">Proyecto *</label><select id="asignar-proyecto" required><option value="">Seleccionar proyecto...</option></select></div>
+        <div class="form-group"><label for="asignar-fecha">Fecha de Salida</label><input type="date" id="asignar-fecha"></div>
+        <div class="form-group"><label for="asignar-recibio">Recibió (nombre)</label><input type="text" id="asignar-recibio" placeholder="Nombre de quien recibe"></div>
+        <div class="form-group"><label for="asignar-notas">Notas</label><textarea id="asignar-notas" rows="2" placeholder="Motivo, observaciones..."></textarea></div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" data-modal="asignar">Cancelar</button><button type="submit" class="btn btn-primary">Registrar Asignación</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL REPORTE -->
+  <div class="modal-overlay" id="modal-reporte">
+    <div class="modal" style="max-width:800px;">
+      <div class="modal-header"><h2>📄 Reporte de Movimientos</h2><button class="modal-close" data-modal="reporte">&times;</button></div>
+      <div class="card-body" style="padding:0;">
+        <div id="reporte-contenido" style="padding:20px;max-height:500px;overflow-y:auto;"></div>
+        <div style="padding:12px 20px;border-top:1px solid var(--border);text-align:right;"><button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL HISTORIAL -->
+  <div class="modal-overlay" id="modal-historial">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h2 id="historial-titulo">Historial</h2>
+        <button class="modal-close" data-modal="historial">&times;</button>
+      </div>
+      <div class="card-body" style="max-height:450px;overflow-y:auto;padding:0;">
+        <div id="historial-contenido"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONTRASEÑA -->
+  <div class="modal-overlay" id="modal-password">
+    <div class="modal" style="max-width:380px;">
+      <div class="modal-header"><h2>🔐 Verificación</h2><button class="modal-close" id="btn-pw-cerrar">&times;</button></div>
+      <div class="card-body">
+        <p style="margin-bottom:12px;color:var(--text-secondary);font-size:0.9rem;">Ingresá la contraseña de administrador para continuar:</p>
+        <input type="password" id="input-password" style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:1rem;outline:none;box-sizing:border-box;background:var(--surface);color:var(--text);" placeholder="Contraseña" autocomplete="off">
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-secondary" id="btn-pw-cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="btn-pw-confirmar">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="/app.js?v=10"></script>
+</body>
+</html>

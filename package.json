@@ -1,0 +1,31 @@
+{
+  "name": "sistema-de-control-de-inventario",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && npx tsx watch src/index.ts",
+    "dev:client": "cd client && npx vite",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "cd client && npx vite build",
+    "build:server": "cd server && npx tsc",
+    "build": "npm run build:client && npm run build:server",
+    "start": "cd server && npx tsx src/index.ts",
+    "typecheck": "cd server && npx tsc --noEmit && cd ../client && npx tsc --noEmit",
+    "build:exe": "node scripts/build-exe.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "pkg": {
+    "assets": [
+      "client/dist/**/*",
+      "../../client/dist/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
+  },
+  "dependencies": {
+    "electron": "^41.7.1"
+  }
+}

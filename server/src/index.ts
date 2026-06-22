@@ -8,7 +8,7 @@ import { dirname, join } from 'path';
 import bcrypt from 'bcryptjs';
 import ExcelJS from 'exceljs';
 import * as db from './database.js';
-import { generarToken, verificarToken } from './middleware.js';
+import { generarToken, verificarToken, soloAdmin } from './middleware.js';
 import 'dotenv/config';
 
 const __filename = typeof globalThis.__filename !== 'undefined' ? globalThis.__filename : fileURLToPath(import.meta.url);
@@ -110,6 +110,44 @@ app.put('/api/auth/password', verificarToken, async (req: Request, res: Response
   }
 });
 
+/* ========== USUARIOS (admin) ========== */
+
+app.get('/api/usuarios', verificarToken, soloAdmin, async (_req: Request, res: Response) => {
+  try { res.json(db.getAllUsers()); }
+  catch (err) { console.error(err); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+app.post('/api/usuarios', verificarToken, soloAdmin, async (req: Request, res: Response) => {
+  try {
+    const { nombre, email, password, rol } = req.body;
+    if (!nombre || !email || !password) { res.status(400).json({ error: 'Nombre, email y contraseña requeridos' }); return; }
+    const existente = db.findUserByEmail(email);
+    if (existente) { res.status(409).json({ error: 'El email ya está registrado' }); return; }
+    const usuario = db.createUser({ nombre, email, password, rol });
+    res.status(201).json(usuario);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+app.put('/api/usuarios/:id', verificarToken, soloAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (id === 1 && req.body.rol === 'usuario') { res.status(400).json({ error: 'No puedes cambiar el rol del admin principal' }); return; }
+    const usuario = db.updateUser(id, req.body);
+    if (!usuario) { res.status(404).json({ error: 'Usuario no encontrado' }); return; }
+    res.json(usuario);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+app.delete('/api/usuarios/:id', verificarToken, soloAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (id === 1) { res.status(400).json({ error: 'No puedes eliminar al admin principal' }); return; }
+    if (id === req.usuario!.id) { res.status(400).json({ error: 'No puedes eliminarte a ti mismo' }); return; }
+    db.deleteUser(id);
+    res.json({ message: 'Usuario eliminado' });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
 /* ========== AUDITORIA ========== */
 
 app.get('/api/auditoria', verificarToken, async (req: Request, res: Response) => {
@@ -201,6 +239,16 @@ app.post('/api/backup/restore', verificarToken, async (req: Request, res: Respon
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al restaurar' });
+  }
+});
+
+app.post('/api/backup/run', verificarToken, soloAdmin, async (_req: Request, res: Response) => {
+  try {
+    const path = db.runLocalBackup();
+    res.json({ message: 'Backup creado', path });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear backup' });
   }
 });
 

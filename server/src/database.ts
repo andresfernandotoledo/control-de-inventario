@@ -1,6 +1,6 @@
 import initSqlJs, { Database as SqlJsDatabase, SqlJsStatic } from 'sql.js';
 import bcrypt from 'bcryptjs';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -270,6 +270,29 @@ export function createUser({
 export function updatePassword(id: number, newPassword: string): void {
   const hash = bcrypt.hashSync(newPassword, 10);
   run('UPDATE usuarios SET password = ? WHERE id = ?', [hash, id]);
+}
+
+export function getAllUsers(): Usuario[] {
+  return queryAll<Usuario>('SELECT id, nombre, email, rol, created_at FROM usuarios ORDER BY nombre ASC');
+}
+
+export function updateUser(id: number, fields: { nombre?: string; email?: string; rol?: string; password?: string }): Usuario | null {
+  const sets: string[] = [];
+  const vals: any[] = [];
+  if (fields.nombre !== undefined) { sets.push('nombre = ?'); vals.push(fields.nombre); }
+  if (fields.email !== undefined) { sets.push('email = ?'); vals.push(fields.email); }
+  if (fields.rol !== undefined) { sets.push('rol = ?'); vals.push(fields.rol); }
+  if (fields.password) { sets.push('password = ?'); vals.push(bcrypt.hashSync(fields.password, 10)); }
+  if (sets.length === 0) return findUserById(id);
+  vals.push(id);
+  run(`UPDATE usuarios SET ${sets.join(', ')} WHERE id = ?`, vals);
+  return findUserById(id);
+}
+
+export function deleteUser(id: number): boolean {
+  run('DELETE FROM auditoria WHERE usuario_id = ?', [id]);
+  run('DELETE FROM usuarios WHERE id = ?', [id]);
+  return true;
 }
 
 /* ========== AUDITORIA ========== */
@@ -763,6 +786,16 @@ export function backupDB() {
   const herramientas = getAllHerramientas();
   const usuarios = queryAll<Usuario>('SELECT id, nombre, email, rol, created_at FROM usuarios');
   return { ups, herramientas, usuarios, fecha: new Date().toISOString() };
+}
+
+export function runLocalBackup(): string {
+  const backupDir = join(dirname(dbPath), 'backups');
+  if (!existsSync(backupDir)) mkdirSync(backupDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const backupPath = join(backupDir, `inventario_${timestamp}.db`);
+  saveDB();
+  copyFileSync(dbPath, backupPath);
+  return backupPath;
 }
 
 export function restoreDB(data: any): void {

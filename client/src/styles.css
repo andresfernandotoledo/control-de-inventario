@@ -77,6 +77,8 @@ tr:hover td { background: rgba(30,64,175,0.03); }
 .badge-warning { background: #fef3c7; color: #92400e; }
 .badge-error { background: #fee2e2; color: #991b1b; }
 .badge-info { background: #dbeafe; color: #1e40af; }
+.badge-primary { background: var(--primary); color: white; }
+.badge-secondary { background: var(--border); color: var(--text-secondary); }
 .badge-group { display: flex; flex-wrap: wrap; gap: 4px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; padding: 8px 0; color: var(--text-secondary); font-size: 0.85rem; }
 .action-btns { display: flex; gap: 4px; }

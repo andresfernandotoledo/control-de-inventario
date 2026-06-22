@@ -25,7 +25,5 @@
       "node18-win-x64"
     ]
   },
-  "dependencies": {
-    "electron": "^41.7.1"
-  }
+  "dependencies": {}
 }

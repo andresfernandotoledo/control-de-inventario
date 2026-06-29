@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Chart, registerables } from 'chart.js'
 import { apiFetch } from '../api'
 import { useToast } from './Toast'
+import ConfirmModal from './ConfirmModal'
+import { exportPdf } from '../exportPdf'
 import type { Proyecto, Herramienta, StatsProy } from '../types'
 
 Chart.register(...registerables)
@@ -18,6 +20,9 @@ export default function ProyectosSection() {
   const [editando, setEditando] = useState<Proyecto | null>(null)
   const [formData, setFormData] = useState({ nombre: '', ubicacion: '', descripcion: '', fecha_inicio: '', fecha_fin: '', responsable: '' })
   const [selectedTools, setSelectedTools] = useState<number[]>([])
+  const [search, setSearch] = useState('')
+  const [estadoFilter, setEstadoFilter] = useState('')
+  const [responsableInput, setResponsableInput] = useState({ open: false, id: 0, value: '' })
   const [showAdminPass, setShowAdminPass] = useState(false)
   const [adminPass, setAdminPass] = useState('')
   const [adminError, setAdminError] = useState('')
@@ -183,12 +188,18 @@ export default function ProyectosSection() {
   }
 
   async function handleCambiarResponsable(id: number) {
-    const nuevo = prompt('Nuevo responsable:')
-    if (!nuevo || !nuevo.trim()) return
+    const proy = proyectosData.find(p => p.id === id)
+    setResponsableInput({ open: true, id, value: proy?.responsable || '' })
+  }
+
+  const handleConfirmResponsable = async () => {
+    const { id, value } = responsableInput
+    setResponsableInput(p => ({ ...p, open: false }))
+    if (!value.trim()) return
     try {
       const res = await apiFetch<Proyecto>(`/proyectos/${id}/responsable`, {
         method: 'PUT',
-        body: JSON.stringify({ responsable: nuevo.trim() }),
+        body: JSON.stringify({ responsable: value.trim() }),
       })
       if (res) {
         toast('Responsable actualizado', 'success')
@@ -232,11 +243,31 @@ export default function ProyectosSection() {
     setShowAdminPass(false)
   }
 
-  const totalPages = Math.ceil(proyectosData.length / PAGE_SIZE)
-  const paginated = proyectosData.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const filtered = proyectosData.filter(p => {
+    if (estadoFilter && p.estado !== estadoFilter) return false
+    if (search) {
+      const q = search.toLowerCase()
+      if (!p.nombre.toLowerCase().includes(q) &&
+          !p.ubicacion.toLowerCase().includes(q) &&
+          !(p.responsable || '').toLowerCase().includes(q) &&
+          !(p.descripcion || '').toLowerCase().includes(q)) return false
+    }
+    return true
+  })
+
+  useEffect(() => { setPage(0) }, [search, estadoFilter])
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   async function handleSelectAll() {
     setSelectedTools(herrData.map(h => h.id))
+  }
+
+  const handleExportPDF = () => {
+    const headers = ['Nombre', 'Ubicación', 'Fecha Inicio', 'Fecha Fin', 'Responsable', 'Descripción', 'Estado']
+    const rows = filtered.map(p => [p.nombre, p.ubicacion, p.fecha_inicio || '—', p.fecha_fin || '—', p.responsable, p.descripcion, p.estado])
+    exportPdf('Listado de Proyectos', headers, rows, 'proyectos')
   }
 
   const proyectosMap = new Map(proyectosData.map(p => [p.id, p.nombre]))
@@ -269,7 +300,10 @@ export default function ProyectosSection() {
 
       <div className="section-header">
         <h2>Proyectos</h2>
-        <button className="btn btn-primary" onClick={handleNew}>Nuevo Proyecto</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={handleExportPDF}>Exportar PDF</button>
+          <button className="btn btn-primary" onClick={handleNew}>Nuevo Proyecto</button>
+        </div>
       </div>
 
       {stats && (
@@ -303,6 +337,14 @@ export default function ProyectosSection() {
 
       <div className="card">
         <div className="card-body">
+          <div className="filter-bar">
+            <input className="input" placeholder="Buscar por nombre, ubicación, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
+            <select value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}>
+              <option value="">Todos los estados</option>
+              <option value="abierto">Abiertos</option>
+              <option value="cerrado">Cerrados</option>
+            </select>
+          </div>
           <div className="table-container">
             <table>
               <thead>
@@ -319,7 +361,9 @@ export default function ProyectosSection() {
                 </tr>
               </thead>
               <tbody>
-                {paginated.map(p => (
+                {paginated.length === 0 ? (
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>No se encontraron proyectos.</td></tr>
+                ) : paginated.map(p => (
                   <tr key={p.id}>
                     <td>{p.nombre}</td>
                     <td>{p.ubicacion}</td>
@@ -432,6 +476,19 @@ export default function ProyectosSection() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={responsableInput.open}
+        title="Cambiar Responsable"
+        message="Ingrese el nuevo responsable del proyecto"
+        confirmLabel="Guardar"
+        variant="primary"
+        input
+        inputLabel="Responsable"
+        inputValue={responsableInput.value}
+        onInputChange={v => setResponsableInput(p => ({ ...p, value: v }))}
+        onConfirm={handleConfirmResponsable}
+        onCancel={() => setResponsableInput(p => ({ ...p, open: false }))}
+      />
     </div>
   )
 }

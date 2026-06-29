@@ -11,7 +11,9 @@
     "build": "npm run build:client && npm run build:server",
     "start": "cd server && npx tsx src/index.ts",
     "typecheck": "cd server && npx tsc --noEmit && cd ../client && npx tsc --noEmit",
-    "build:exe": "node scripts/build-exe.mjs"
+    "build:exe": "node scripts/build-exe.mjs",
+    "electron": "ELECTRON_PROD=true electron . --disable-gpu",
+    "electron:dev": "npm run build:client && ELECTRON_PROD=true electron . --disable-gpu"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
@@ -25,5 +27,6 @@
       "node18-win-x64"
     ]
   },
-  "dependencies": {}
+  "dependencies": {},
+  "main": "electron/main.js"
 }

@@ -10,6 +10,7 @@ export interface UPS {
   fecha_ingreso: string | null
   fecha_salida: string | null
   notas: string
+  foto_url: string
   created_at: string
   updated_at: string
 }
@@ -28,6 +29,7 @@ export interface Herramienta {
   estado: HerrEstado
   fecha_adquisicion: string | null
   notas: string
+  foto_url: string
   created_at: string
   updated_at: string
 }

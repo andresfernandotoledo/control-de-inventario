@@ -1,10 +1,12 @@
 import React, { useState, useEffect, type ReactNode } from 'react'
 
 const tabs = [
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'ups', label: 'UPS', icon: '🔋' },
   { id: 'herramientas', label: 'Herramientas', icon: '🔧' },
   { id: 'proyectos', label: 'Proyectos', icon: '📋' },
   { id: 'movimientos', label: 'Movimientos', icon: '🔄' },
+  { id: 'auditoria', label: 'Auditoría', icon: '📜' },
 ]
 
 interface LayoutProps {
@@ -18,16 +20,22 @@ interface LayoutProps {
 
 export default function Layout({ activeTab, onTabChange, user, onLogout, onPerfil, children }: LayoutProps) {
   const [dark, setDark] = useState(() => localStorage.getItem('dark') === 'true')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     document.body.classList.toggle('dark', dark)
     localStorage.setItem('dark', String(dark))
   }, [dark])
 
+  const closeSidebar = () => setSidebarOpen(false)
+  const handleTab = (tab: string) => { onTabChange(tab); closeSidebar() }
+
   return (
-    <div className="view">
-      <aside className="sidebar">
+    <div className={`view ${sidebarOpen ? 'sidebar-expanded' : ''}`}>
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={closeSidebar} />}
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
+          <button className="sidebar-close" onClick={closeSidebar}>×</button>
           <div className="brand-frame">
             <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="8" y="22" width="48" height="34" rx="4" fill="var(--primary)"/>
@@ -45,7 +53,7 @@ export default function Layout({ activeTab, onTabChange, user, onLogout, onPerfi
             <div
               key={t.id}
               className={`tab ${activeTab === t.id ? 'tab-active' : ''}`}
-              onClick={() => onTabChange(t.id)}
+              onClick={() => handleTab(t.id)}
             >
               <span className="tab-icon">{t.icon}</span>
               <span>{t.label}</span>
@@ -53,7 +61,7 @@ export default function Layout({ activeTab, onTabChange, user, onLogout, onPerfi
           ))}
         </nav>
         <div className="sidebar-footer">
-          <div className="tab" onClick={onPerfil}>
+          <div className="tab" onClick={() => { onPerfil(); closeSidebar() }}>
             <span className="tab-icon">👤</span>
             <span>Perfil</span>
           </div>
@@ -61,18 +69,21 @@ export default function Layout({ activeTab, onTabChange, user, onLogout, onPerfi
             <span className="tab-icon">{dark ? '☀️' : '🌙'}</span>
             <span>{dark ? 'Modo Claro' : 'Modo Oscuro'}</span>
           </div>
-          <div className="tab" onClick={onLogout}>
+          <div className="tab" onClick={() => { onLogout(); closeSidebar() }}>
             <span className="tab-icon">🚪</span>
             <span>Cerrar Sesión</span>
           </div>
         </div>
       </aside>
       <main className="main-content">
-        {user && (
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>
-            {user.nombre} &mdash; {user.email}
-          </div>
-        )}
+        <div className="main-topbar">
+          <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
+          {user && (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              {user.nombre} &mdash; {user.email}
+            </span>
+          )}
+        </div>
         {children}
       </main>
     </div>

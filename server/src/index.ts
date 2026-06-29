@@ -286,9 +286,9 @@ app.get('/api/ups/:id', verificarToken, async (req: Request, res: Response) => {
 
 app.post('/api/ups', verificarToken, async (req: Request, res: Response) => {
   try {
-    const { serial_number, modelo, capacidad, ubicacion, estado, notas } = req.body;
+    const { serial_number, modelo, capacidad, ubicacion, estado, notas, foto_url } = req.body;
     if (!serial_number || !serial_number.trim()) { res.status(400).json({ error: 'El número de serie es obligatorio' }); return; }
-    const ups = db.createUPS({ serial_number: serial_number.trim(), modelo, capacidad, ubicacion, estado, notas }, req.usuario!.id);
+    const ups = db.createUPS({ serial_number: serial_number.trim(), modelo, capacidad, ubicacion, estado, notas, foto_url }, req.usuario!.id);
     res.status(201).json(ups);
   } catch (err) {
     if ((err as Error)?.message?.includes('UNIQUE constraint')) { res.status(409).json({ error: 'El número de serie ya existe' }); return; }
@@ -335,9 +335,9 @@ app.get('/api/herramientas/:id', verificarToken, async (req: Request, res: Respo
 
 app.post('/api/herramientas', verificarToken, async (req: Request, res: Response) => {
   try {
-    const { codigo, nombre, marca, modelo, ubicacion, estado, notas } = req.body;
+    const { codigo, nombre, marca, modelo, ubicacion, estado, notas, foto_url } = req.body;
     if (!codigo || !codigo.trim()) { res.status(400).json({ error: 'El código es obligatorio' }); return; }
-    const h = db.createHerramienta({ codigo: codigo.trim(), nombre, marca, modelo, ubicacion, estado, notas }, req.usuario!.id);
+    const h = db.createHerramienta({ codigo: codigo.trim(), nombre, marca, modelo, ubicacion, estado, notas, foto_url }, req.usuario!.id);
     res.status(201).json(h);
   } catch (err) {
     if ((err as Error)?.message?.includes('UNIQUE constraint')) { res.status(409).json({ error: 'El código ya existe' }); return; }

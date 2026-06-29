@@ -20,17 +20,27 @@ export function getHeaders(): Record<string, string> {
 }
 
 export async function apiFetch<T = unknown>(path: string, options?: RequestInit): Promise<T | null> {
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    headers: { ...getHeaders(), ...options?.headers },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`, {
+      ...options,
+      headers: { ...getHeaders(), ...options?.headers },
+    })
+  } catch {
+    throw new Error('No se pudo conectar con el servidor. Verifica que esté corriendo.')
+  }
   if (res.status === 401) {
     setToken(null)
     window.location.reload()
     return null
   }
   if (res.status === 204) return null
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || data.message || 'Error en la solicitud')
+  let data: any
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error('Respuesta inválida del servidor')
+  }
+  if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`)
   return data as T
 }

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Chart } from 'chart.js/auto'
 import { apiFetch } from '../api'
 import { useToast } from './Toast'
+import FotoModal from './FotoModal'
+import ConfirmModal from './ConfirmModal'
+import { exportPdf } from '../exportPdf'
 import type { Herramienta, Proyecto, StatsHerr, HerrEstado } from '../types'
 import { PAGE_SIZE, estadoColorsHerr, estadoLabelsHerr } from '../types'
 
@@ -16,7 +19,7 @@ export default function HerramientasSection() {
 
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
-  const [form, setForm] = useState({ codigo: '', nombre: '', marca: '', modelo: '', ubicacion: '', estado: 'disponible' as HerrEstado, fecha_adquisicion: '', notas: '' })
+  const [form, setForm] = useState({ codigo: '', nombre: '', marca: '', modelo: '', ubicacion: '', estado: 'disponible' as HerrEstado, fecha_adquisicion: '', notas: '', foto_url: '' })
 
   const [showAsignar, setShowAsignar] = useState(false)
   const [asignarHerrId, setAsignarHerrId] = useState<number | null>(null)
@@ -35,6 +38,8 @@ export default function HerramientasSection() {
   const [adminPass, setAdminPass] = useState('')
   const [adminError, setAdminError] = useState('')
   const adminInputRef = useRef<HTMLInputElement>(null)
+  const [fotoPreview, setFotoPreview] = useState<{ url: string; label: string } | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const chartRefs = useRef<Record<string, Chart>>({})
   const { toast } = useToast()
@@ -179,7 +184,7 @@ export default function HerramientasSection() {
 
   const openCreateForm = () => {
     setEditId(null)
-    setForm({ codigo: '', nombre: '', marca: '', modelo: '', ubicacion: '', estado: 'disponible', fecha_adquisicion: '', notas: '' })
+    setForm({ codigo: '', nombre: '', marca: '', modelo: '', ubicacion: '', estado: 'disponible', fecha_adquisicion: '', notas: '', foto_url: '' })
     setShowForm(true)
   }
 
@@ -187,7 +192,7 @@ export default function HerramientasSection() {
     const ok = await confirmarAdmin()
     if (!ok) return
     setEditId(h.id)
-    setForm({ codigo: h.codigo, nombre: h.nombre, marca: h.marca, modelo: h.modelo, ubicacion: h.ubicacion, estado: h.estado, fecha_adquisicion: h.fecha_adquisicion || '', notas: h.notas })
+    setForm({ codigo: h.codigo, nombre: h.nombre, marca: h.marca, modelo: h.modelo, ubicacion: h.ubicacion, estado: h.estado, fecha_adquisicion: h.fecha_adquisicion || '', notas: h.notas, foto_url: h.foto_url || '' })
     setShowForm(true)
   }
 
@@ -209,6 +214,13 @@ export default function HerramientasSection() {
   }
 
   const handleDelete = async (id: number) => {
+    setConfirmDeleteId(id)
+  }
+
+  const handleConfirmDelete = async () => {
+    const id = confirmDeleteId
+    if (!id) return
+    setConfirmDeleteId(null)
     const ok = await confirmarAdmin()
     if (!ok) return
     try {
@@ -270,16 +282,10 @@ export default function HerramientasSection() {
     toast('Exportado a CSV', 'success')
   }
 
-  function escapeHtml(v: unknown): string {
-    return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-  }
-
   const handleExportPDF = () => {
-    const w = window.open('', '_blank')
-    if (!w) { toast('Permita ventanas emergentes', 'error'); return }
-    const rows = filteredData.map(h => `<tr><td>${escapeHtml(h.codigo)}</td><td>${escapeHtml(h.nombre)}</td><td>${escapeHtml(h.marca)}</td><td>${escapeHtml(h.modelo)}</td><td>${escapeHtml(h.ubicacion)}</td><td>${escapeHtml(estadoLabelsHerr[getEstado(h)])}</td><td>${escapeHtml(h.fecha_adquisicion)}</td><td>${escapeHtml(h.notas)}</td></tr>`).join('')
-    w.document.write(`<html><head><title>Herramientas</title><style>body{font-family:sans-serif;padding:20px}h2{margin-bottom:16px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #999;padding:6px 8px;text-align:left}th{background:#f0f0f0}</style></head><body><h2>Listado de Herramientas</h2><table><thead><tr><th>Código</th><th>Nombre</th><th>Marca</th><th>Modelo</th><th>Ubicación</th><th>Estado</th><th>Adquisición</th><th>Notas</th></tr></thead><tbody>${rows}</tbody></table><script>setTimeout(() => w.print(), 500)<\/script></body></html>`)
-    w.document.close()
+    const headers = ['Código', 'Nombre', 'Marca', 'Modelo', 'Ubicación', 'Estado', 'Adquisición', 'Notas']
+    const rows = filteredData.map(h => [h.codigo, h.nombre, h.marca, h.modelo, h.ubicacion, estadoLabelsHerr[getEstado(h)], h.fecha_adquisicion || '—', h.notas || '—'])
+    exportPdf('Listado de Herramientas', headers, rows, 'herramientas')
   }
 
   return (
@@ -345,7 +351,7 @@ export default function HerramientasSection() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Código</th><th>Nombre</th><th>Marca</th><th>Modelo</th><th>Ubicación</th><th>Estado</th><th>Adquisición</th><th>Notas</th><th>Acciones</th>
+                      <th>Foto</th><th>Código</th><th>Nombre</th><th>Marca</th><th>Modelo</th><th>Ubicación</th><th>Estado</th><th>Adquisición</th><th>Notas</th><th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -353,6 +359,7 @@ export default function HerramientasSection() {
                       const est = getEstado(h)
                       return (
                         <tr key={h.id}>
+                          <td>{h.foto_url ? <img src={h.foto_url} alt="foto" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }} onClick={() => setFotoPreview({ url: h.foto_url, label: `${h.codigo} - ${h.nombre}` })} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} /> : '—'}</td>
                           <td>{h.codigo}</td>
                           <td>{h.nombre}</td>
                           <td>{h.marca}</td>
@@ -399,6 +406,7 @@ export default function HerramientasSection() {
               <div className="form-group"><label>Ubicación</label><input className="input" value={form.ubicacion} onChange={e => setForm(p => ({ ...p, ubicacion: e.target.value }))} /></div>
               <div className="form-group"><label>Estado</label><select className="input" value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value as HerrEstado }))}><option value="disponible">Disponible</option><option value="en_uso">En Uso</option><option value="baja">Baja</option></select></div>
               <div className="form-group"><label>Fecha de Adquisición</label><input type="date" className="input" value={form.fecha_adquisicion} onChange={e => setForm(p => ({ ...p, fecha_adquisicion: e.target.value }))} /></div>
+              <div className="form-group"><label>URL Foto</label><input className="input" value={form.foto_url} onChange={e => setForm(p => ({ ...p, foto_url: e.target.value }))} placeholder="https://..." /></div>
               <div className="form-group"><label>Notas</label><textarea className="input" rows={3} value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} /></div>
             </div>
             <div className="modal-footer">
@@ -459,6 +467,8 @@ export default function HerramientasSection() {
           </div>
         </div>
       )}
+      {fotoPreview && <FotoModal url={fotoPreview.url} label={fotoPreview.label} onClose={() => setFotoPreview(null)} />}
+      <ConfirmModal open={confirmDeleteId !== null} title="Eliminar Herramienta" message="¿Está seguro de eliminar esta herramienta?" confirmLabel="Eliminar" onConfirm={handleConfirmDelete} onCancel={() => setConfirmDeleteId(null)} />
     </div>
   )
 }

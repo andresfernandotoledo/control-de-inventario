@@ -3,7 +3,8 @@ const { spawn } = require('child_process')
 const { join, dirname } = require('path')
 const { existsSync } = require('fs')
 
-const isDev = !app.isPackaged
+const isDev = !app.isPackaged && !process.env.ELECTRON_PROD
+const isPackaged = app.isPackaged
 let serverProcess = null
 
 function startServer() {
@@ -11,15 +12,15 @@ function startServer() {
     let resolved = false
     let cmd, args, cwd
 
-    if (isDev) {
-      cwd = join(__dirname, '..', 'server')
-      cmd = 'npx'
-      args = ['tsx', 'src/index.ts']
-    } else {
+    if (isPackaged) {
       cwd = dirname(process.execPath)
       const bundlePath = join(__dirname, '..', 'dist', 'inventario-server.cjs')
       cmd = process.execPath
       args = [bundlePath]
+    } else {
+      cwd = join(__dirname, '..', 'server')
+      cmd = 'npx'
+      args = ['tsx', 'src/index.ts']
     }
 
     serverProcess = spawn(cmd, args, {

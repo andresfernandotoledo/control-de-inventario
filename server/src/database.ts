@@ -163,6 +163,7 @@ export async function initSchema(): Promise<void> {
       fecha_ingreso TEXT DEFAULT (date('now')),
       fecha_salida TEXT DEFAULT NULL,
       notas TEXT NOT NULL DEFAULT '',
+      foto_url TEXT NOT NULL DEFAULT '',
       created_at TEXT DEFAULT (datetime('now','localtime')),
       updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
@@ -177,6 +178,7 @@ export async function initSchema(): Promise<void> {
       estado TEXT NOT NULL DEFAULT 'disponible' CHECK(estado IN ('disponible','en_uso','baja')),
       fecha_adquisicion TEXT DEFAULT (date('now')),
       notas TEXT NOT NULL DEFAULT '',
+      foto_url TEXT NOT NULL DEFAULT '',
       created_at TEXT DEFAULT (datetime('now','localtime')),
       updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
@@ -227,6 +229,9 @@ export async function initSchema(): Promise<void> {
       FOREIGN KEY (proyecto_id) REFERENCES proyectos(id) ON DELETE CASCADE
     );
   `);
+
+  try { run("ALTER TABLE ups ADD COLUMN foto_url TEXT NOT NULL DEFAULT ''"); } catch {}
+  try { run("ALTER TABLE herramientas ADD COLUMN foto_url TEXT NOT NULL DEFAULT ''"); } catch {}
 
   const row = queryOne<{ c: number }>('SELECT COUNT(*) as c FROM usuarios');
   if (row?.c === 0) {
@@ -355,6 +360,7 @@ export function createUPS(
     ubicacion,
     estado,
     notas,
+    foto_url,
   }: {
     serial_number: string;
     modelo?: string;
@@ -362,12 +368,13 @@ export function createUPS(
     ubicacion?: string;
     estado?: string;
     notas?: string;
+    foto_url?: string;
   },
   usuario_id: number
 ): UPS | null {
   const result = run(
-    'INSERT INTO ups (serial_number, modelo, capacidad, ubicacion, estado, notas) VALUES (?, ?, ?, ?, ?, ?)',
-    [serial_number, modelo || '', capacidad || '', ubicacion || '', estado || 'activa', notas || '']
+    'INSERT INTO ups (serial_number, modelo, capacidad, ubicacion, estado, notas, foto_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [serial_number, modelo || '', capacidad || '', ubicacion || '', estado || 'activa', notas || '', foto_url || '']
   );
   const newRecord = getUPSById(result.lastInsertRowid);
   registrarAuditoria({
@@ -383,7 +390,7 @@ export function createUPS(
 export function updateUPS(id: number, fields: Record<string, any>, usuario_id: number): UPS | null {
   const old = getUPSById(id);
   if (!old) return null;
-  const allowed = ['serial_number', 'modelo', 'capacidad', 'ubicacion', 'estado', 'notas', 'fecha_ingreso', 'fecha_salida'];
+  const allowed = ['serial_number', 'modelo', 'capacidad', 'ubicacion', 'estado', 'notas', 'fecha_ingreso', 'fecha_salida', 'foto_url'];
   const sets: string[] = [];
   const vals: any[] = [];
   for (const key of allowed) {
@@ -451,6 +458,7 @@ export function createHerramienta(
     ubicacion,
     estado,
     notas,
+    foto_url,
   }: {
     codigo: string;
     nombre?: string;
@@ -459,12 +467,13 @@ export function createHerramienta(
     ubicacion?: string;
     estado?: string;
     notas?: string;
+    foto_url?: string;
   },
   usuario_id: number
 ): Herramienta | null {
   const result = run(
-    'INSERT INTO herramientas (codigo, nombre, marca, modelo, ubicacion, estado, notas) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [codigo, nombre || '', marca || '', modelo || '', ubicacion || '', estado || 'disponible', notas || '']
+    'INSERT INTO herramientas (codigo, nombre, marca, modelo, ubicacion, estado, notas, foto_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [codigo, nombre || '', marca || '', modelo || '', ubicacion || '', estado || 'disponible', notas || '', foto_url || '']
   );
   const newRecord = getHerramientaById(result.lastInsertRowid);
   registrarAuditoria({
@@ -480,7 +489,7 @@ export function createHerramienta(
 export function updateHerramienta(id: number, fields: Record<string, any>, usuario_id: number): Herramienta | null {
   const old = getHerramientaById(id);
   if (!old) return null;
-  const allowed = ['codigo', 'nombre', 'marca', 'modelo', 'ubicacion', 'estado', 'notas', 'fecha_adquisicion'];
+  const allowed = ['codigo', 'nombre', 'marca', 'modelo', 'ubicacion', 'estado', 'notas', 'fecha_adquisicion', 'foto_url'];
   const sets: string[] = [];
   const vals: any[] = [];
   for (const key of allowed) {

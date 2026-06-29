@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
 
 type ToastType = 'info' | 'success' | 'error'
 
@@ -17,6 +17,12 @@ const ToastContext = createContext<ToastContextType | null>(null)
 
 let nextId = 0
 
+const icons: Record<ToastType, string> = {
+  success: '✓',
+  error: '✕',
+  info: 'ℹ',
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
@@ -28,16 +34,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id))
       }, 300)
-    }, 3500)
+    }, 4000)
   }, [])
+
+  const dismiss = (id: number) => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t))
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 300)
+  }
 
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
       <div id="toast-container">
         {toasts.map(t => (
-          <div key={t.id} className={`toast toast-${t.type} ${t.leaving ? 'toast-out' : ''}`}>
-            {t.message}
+          <div key={t.id} className={`toast toast-${t.type} ${t.leaving ? 'toast-out' : ''}`} onClick={() => dismiss(t.id)}>
+            <span className="toast-icon">{icons[t.type]}</span>
+            <span className="toast-msg">{t.message}</span>
           </div>
         ))}
       </div>

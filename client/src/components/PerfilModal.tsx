@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import { useToast } from './Toast'
+import ConfirmModal from './ConfirmModal'
 
 interface Props {
   open: boolean
@@ -35,6 +36,7 @@ export default function PerfilModal({ open, onClose }: Props) {
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'usuario' })
   const [formError, setFormError] = useState('')
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ id: number; nombre: string } | null>(null)
 
   useEffect(() => {
     if (open && isAdmin && tab === 'usuarios') loadUsuarios()
@@ -93,7 +95,13 @@ export default function PerfilModal({ open, onClose }: Props) {
   }
 
   async function handleDelete(id: number, nombre: string) {
-    if (!confirm(`¿Eliminar usuario "${nombre}"?`)) return
+    setConfirmDeleteUser({ id, nombre })
+  }
+
+  const handleConfirmDeleteUser = async () => {
+    if (!confirmDeleteUser) return
+    const { id } = confirmDeleteUser
+    setConfirmDeleteUser(null)
     try {
       await apiFetch(`/usuarios/${id}`, { method: 'DELETE' })
       toast('Usuario eliminado', 'success')
@@ -224,6 +232,7 @@ export default function PerfilModal({ open, onClose }: Props) {
           </div>
         )}
       </div>
+      <ConfirmModal open={confirmDeleteUser !== null} title="Eliminar Usuario" message={`¿Eliminar usuario "${confirmDeleteUser?.nombre}"?`} confirmLabel="Eliminar" onConfirm={handleConfirmDeleteUser} onCancel={() => setConfirmDeleteUser(null)} />
     </div>
   )
 }

@@ -2,8 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { apiFetch, getHeaders } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from './Toast'
+import FotoModal from './FotoModal'
+import ConfirmModal from './ConfirmModal'
 import type { UPS, UPSEstado, StatsUPS } from '../types'
 import { estadoLabelsUPS, estadoColorsUPS, PAGE_SIZE } from '../types'
+import { exportPdf } from '../exportPdf'
 import { Chart, registerables } from 'chart.js'
 
 Chart.register(...registerables)
@@ -28,6 +31,7 @@ export default function UPSSection() {
     fecha_ingreso: '',
     fecha_salida: '',
     notas: '',
+    foto_url: '',
   })
   const chartRefs = useRef<Chart[]>([])
   const [showAdminPass, setShowAdminPass] = useState(false)
@@ -35,6 +39,8 @@ export default function UPSSection() {
   const [adminPass, setAdminPass] = useState('')
   const [adminError, setAdminError] = useState('')
   const adminInputRef = useRef<HTMLInputElement>(null)
+  const [fotoPreview, setFotoPreview] = useState<{ url: string; label: string } | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const loadUPS = useCallback(async () => {
     const data = await apiFetch<UPS[]>('/ups')
@@ -198,6 +204,7 @@ export default function UPSSection() {
         fecha_ingreso: ups.fecha_ingreso || '',
         fecha_salida: ups.fecha_salida || '',
         notas: ups.notas,
+        foto_url: ups.foto_url || '',
       })
     } else {
       setEditingUPS(null)
@@ -210,6 +217,7 @@ export default function UPSSection() {
         fecha_ingreso: '',
         fecha_salida: '',
         notas: '',
+        foto_url: '',
       })
     }
     setFormOpen(true)
@@ -249,10 +257,15 @@ export default function UPSSection() {
   }
 
   const deleteUPS = useCallback(async (id: number) => {
+    setConfirmDeleteId(id)
+  }, [])
+
+  const handleConfirmDelete = useCallback(async () => {
+    const id = confirmDeleteId
+    if (!id) return
+    setConfirmDeleteId(null)
     const ok = await confirmarAdmin()
     if (!ok) return
-    if (!confirm('¿Está seguro de eliminar esta UPS?')) return
-
     try {
       await apiFetch(`/ups/${id}`, { method: 'DELETE' })
       toast('UPS eliminada correctamente', 'success')
@@ -261,7 +274,7 @@ export default function UPSSection() {
     } catch (e: any) {
       toast(e.message || 'Error al eliminar', 'error')
     }
-  }, [loadUPS, loadStatsUPS, toast, confirmarAdmin])
+  }, [confirmDeleteId, loadUPS, loadStatsUPS, toast, confirmarAdmin])
 
   const handleEstadoChange = async (id: number, estado: UPSEstado) => {
     try {
@@ -292,39 +305,10 @@ export default function UPSSection() {
     } catch (err) { toast((err as Error).message, 'error'); }
   }
 
-  function escapeHtml(str: string | null | undefined): string {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
-
   const exportPDF = () => {
-    const w = window.open('', '_blank')
-    if (!w) return
-    const rows = filtered.map(u => `
-      <tr>
-        <td>${escapeHtml(u.serial_number)}</td>
-        <td>${escapeHtml(u.modelo)}</td>
-        <td>${escapeHtml(u.capacidad)}</td>
-        <td>${escapeHtml(u.ubicacion)}</td>
-        <td>${escapeHtml(estadoLabelsUPS[u.estado])}</td>
-        <td>${escapeHtml(u.fecha_ingreso) || '&mdash;'}</td>
-        <td>${escapeHtml(u.fecha_salida) || '&mdash;'}</td>
-        <td>${escapeHtml(u.notas) || '&mdash;'}</td>
-      </tr>
-    `).join('')
-    w.document.write(`
-      <html><head><title>UPS</title>
-      <style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #000; padding: 8px; text-align: left; } th { background: #eee; }</style>
-      </head><body>
-      <h2>Reporte de UPS</h2>
-      <table>
-        <thead><tr><th>Serie</th><th>Modelo</th><th>Capacidad</th><th>Ubicaci&oacute;n</th><th>Estado</th><th>Ingreso</th><th>Salida</th><th>Notas</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      </body></html>
-    `)
-    w.document.close()
-    setTimeout(() => w.print(), 500)
+    const headers = ['Serie', 'Modelo', 'Capacidad', 'Ubicación', 'Estado', 'Ingreso', 'Salida', 'Notas']
+    const rows = filtered.map(u => [u.serial_number, u.modelo, u.capacidad, u.ubicacion, estadoLabelsUPS[u.estado], u.fecha_ingreso || '—', u.fecha_salida || '—', u.notas || '—'])
+    exportPdf('Reporte de UPS', headers, rows, 'ups')
   }
 
   if (loading) {
@@ -415,6 +399,7 @@ export default function UPSSection() {
               <table>
                 <thead>
                   <tr>
+                    <th>Foto</th>
                     <th>Serie</th>
                     <th>Modelo</th>
                     <th>Capacidad</th>
@@ -429,6 +414,7 @@ export default function UPSSection() {
                 <tbody>
                   {paginated.map(ups => (
                     <tr key={ups.id}>
+                      <td>{ups.foto_url ? <img src={ups.foto_url} alt="foto" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }} onClick={() => setFotoPreview({ url: ups.foto_url, label: `${ups.serial_number} - ${ups.modelo}` })} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} /> : '—'}</td>
                       <td>{ups.serial_number}</td>
                       <td>{ups.modelo}</td>
                       <td>{ups.capacidad}</td>
@@ -512,6 +498,11 @@ export default function UPSSection() {
                 <input type="date" className="form-input" value={formData.fecha_salida} onChange={e => handleFormChange('fecha_salida', e.target.value)} />
               </div>
               <div className="form-group">
+                <label>URL Foto</label>
+                <input className="form-input" value={formData.foto_url} onChange={e => handleFormChange('foto_url', e.target.value)} placeholder="https://..." />
+                {formData.foto_url && <img src={formData.foto_url} alt="preview" style={{ marginTop: 8, maxWidth: 120, maxHeight: 120, borderRadius: 6, objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />}
+              </div>
+              <div className="form-group">
                 <label>Notas</label>
                 <textarea className="form-input" rows={3} value={formData.notas} onChange={e => handleFormChange('notas', e.target.value)} />
               </div>
@@ -523,6 +514,8 @@ export default function UPSSection() {
           </div>
         </div>
       )}
+      {fotoPreview && <FotoModal url={fotoPreview.url} label={fotoPreview.label} onClose={() => setFotoPreview(null)} />}
+      <ConfirmModal open={confirmDeleteId !== null} title="Eliminar UPS" message="¿Está seguro de eliminar esta UPS?" confirmLabel="Eliminar" onConfirm={handleConfirmDelete} onCancel={() => setConfirmDeleteId(null)} />
     </section>
   )
 }
